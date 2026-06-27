@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✨ 拾雨的小游戏 ✨</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: #e0e0e0;
+}
+.container {
+  text-align: center;
+  padding: 20px;
+}
+h1 {
+  font-size: 1.8em;
+  margin-bottom: 15px;
+  color: #f8c8dc;
+  text-shadow: 0 0 10px rgba(248,200,220,0.3);
+}
+.tabs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.tab {
+  padding: 8px 20px;
+  border: 2px solid #4a4a6a;
+  border-radius: 20px;
+  background: #2d2d4e;
+  color: #b0b0d0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+.tab:hover { border-color: #f8c8dc; color: #f8c8dc; }
+.tab.active { background: #4a3a5a; border-color: #f8c8dc; color: #f8c8dc; }
+.game-area {
+  display: none;
+}
+.game-area.active { display: block; }
+
+/* 点击器 */
+#clicker { position: relative; }
+.click-btn {
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  border: 3px solid #f8c8dc;
+  background: #2d2d4e;
+  color: #f8c8dc;
+  font-size: 2.5em;
+  cursor: pointer;
+  transition: transform 0.1s;
+  margin: 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+.click-btn:active { transform: scale(0.9); }
+.click-score { font-size: 1.5em; margin: 10px; color: #a0d8ef; }
+.click-power { font-size: 0.9em; color: #888; margin: 10px; }
+.shop { margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.shop-btn {
+  padding: 8px 15px;
+  border: 2px solid #4a4a6a;
+  border-radius: 10px;
+  background: #2d2d4e;
+  color: #b0b0d0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85em;
+}
+.shop-btn:hover { border-color: #a0d8ef; color: #a0d8ef; }
+.shop-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 打砖块 */
+#brick { position: relative; }
+canvas { border: 2px solid #4a4a6a; border-radius: 8px; background: #16213e; }
+
+/* 记忆翻牌 */
+#memory { position: relative; }
+.memory-board {
+  display: grid;
+  grid-template-columns: repeat(4, 80px);
+  gap: 8px;
+  justify-content: center;
+  margin: 15px auto;
+}
+.card {
+  width: 80px; height: 80px;
+  border-radius: 10px;
+  border: 2px solid #4a4a6a;
+  background: #2d2d4e;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  transition: all 0.3s;
+  user-select: none;
+}
+.card.flipped { background: #4a3a5a; border-color: #f8c8dc; }
+.card.matched { background: #3a5a4a; border-color: #90ee90; opacity: 0.7; }
+.memory-info { font-size: 0.9em; color: #888; margin: 10px; }
+.restart-btn {
+  padding: 8px 20px;
+  border: 2px solid #f8c8dc;
+  border-radius: 15px;
+  background: transparent;
+  color: #f8c8dc;
+  cursor: pointer;
+  font-size: 0.9em;
+  margin-top: 10px;
+}
+.restart-btn:hover { background: rgba(248,200,220,0.1); }
+
+/* 反应测试 */
+#reaction { position: relative; }
+.reaction-box {
+  width: 300px; height: 200px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  margin: 15px auto;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+.reaction-box.waiting { background: #c0392b; color: white; }
+.reaction-box.ready { background: #27ae60; color: white; }
+.reaction-box.idle { background: #2d2d4e; color: #b0b0d0; border: 2px solid #4a4a6a; }
+.reaction-box.result { background: #2d2d4e; color: #a0d8ef; border: 2px solid #4a4a6a; }
+.reaction-best { font-size: 0.9em; color: #888; margin-top: 10px; }
+
+.footer {
+  margin-top: 30px;
+  font-size: 0.8em;
+  color: #555;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>✨ 拾雨的小游戏屋 ✨</h1>
+  
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('clicker')">🎯 点击器</div>
+    <div class="tab" onclick="switchTab('brick')">🧱 打砖块</div>
+    <div class="tab" onclick="switchTab('memory')">🃏 翻牌</div>
+    <div class="tab" onclick="switchTab('reaction')">⚡ 反应</div>
+  </div>
+
+  <!-- 点击器 -->
+  <div id="clicker" class="game-area active">
+    <div class="click-score">✨ <span id="clickCount">0</span> 点</div>
+    <div class="click-btn" onclick="doClick()">🌸</div>
+    <div class="click-power">每次 +<span id="clickPower">1</span> | 自动: <span id="autoRate">0</span>/秒</div>
+    <div class="shop">
+      <button class="shop-btn" onclick="buyUpgrade()">升级点击 (50点)</button>
+      <button class="shop-btn" onclick="buyAuto()">自动收集 (100点)</button>
+    </div>
+  </div>
+
+  <!-- 打砖块 -->
+  <div id="brick" class="game-area">
+    <canvas id="brickCanvas" width="400" height="300"></canvas>
+    <div style="margin-top:10px;font-size:0.9em;color:#888">
+      得分: <span id="brickScore">0</span> | 鼠标控制球拍，点击开始
+    </div>
+  </div>
+
+  <!-- 记忆翻牌 -->
+  <div id="memory" class="game-area">
+    <div class="memory-info">
+      步数: <span id="memoryMoves">0</span> | 配对: <span id="memoryPairs">0</span>/8
+    </div>
+    <div class="memory-board" id="memoryBoard"></div>
+    <button class="restart-btn" onclick="initMemory()">重新开始</button>
+  </div>
+
+  <!-- 反应测试 -->
+  <div id="reaction" class="game-area">
+    <div class="reaction-box idle" id="reactionBox" onclick="reactionClick()">
+      点击开始测试
+    </div>
+    <div class="reaction-best">最佳: <span id="reactionBest">-</span></div>
+  </div>
+
+  <div class="footer">by 拾雨 🌧️</div>
+</div>
+
+<script>
+// Tab 切换
+function switchTab(id) {
+  document.querySelectorAll('.game-area').forEach(g => g.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'brick') initBrick();
+  if (id === 'memory' && !memoryInit) initMemory();
+}
+
+// ===== 点击器 =====
+let clicks = 0, power = 1, autoRate = 0;
+function doClick() {
+  clicks += power;
+  document.getElementById('clickCount').textContent = clicks;
+}
+function buyUpgrade() {
+  if (clicks >= 50) { clicks -= 50; power += 2; document.getElementById('clickPower').textContent = power; document.getElementById('clickCount').textContent = clicks; }
+}
+function buyAuto() {
+  if (clicks >= 100) { clicks -= 100; autoRate += 1; document.getElementById('autoRate').textContent = autoRate; document.getElementById('clickCount').textContent = clicks; }
+}
+setInterval(() => { if (autoRate > 0) { clicks += autoRate; document.getElementById('clickCount').textContent = clicks; } }, 1000);
+
+// ===== 打砖块 =====
+let brickStarted = false, brickAnim;
+function initBrick() {
+  const c = document.getElementById('brickCanvas');
+  const ctx = c.getContext('2d');
+  const W = 400, H = 300;
+  
+  let paddle = { x: 160, w: 80, h: 10 };
+  let ball = { x: 200, y: 250, dx: 3, dy: -3, r: 6 };
+  let score = 0;
+  let bricks = [];
+  
+  // 生成砖块
+  const colors = ['#f8c8dc','#a0d8ef','#90ee90','#ffb347','#dda0dd'];
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 8; col++) {
+      bricks.push({ x: col * 50 + 2, y: row * 20 + 30, w: 46, h: 16, color: colors[row], alive: true });
+    }
+  }
+  
+  c.onmousemove = (e) => {
+    const rect = c.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    paddle.x = Math.max(0, Math.min(W - paddle.w, mouseX - paddle.w / 2));
+  };
+  
+  c.onclick = () => { if (!brickStarted) { brickStarted = true; loop(); } };
+  
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+    
+    // 砖块
+    bricks.forEach(b => {
+      if (b.alive) {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+      }
+    });
+    
+    // 球拍
+    ctx.fillStyle = '#f8c8dc';
+    ctx.fillRect(paddle.x, H - 20, paddle.w, paddle.h);
+    
+    // 球
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fillStyle = '#a0d8ef';
+    ctx.fill();
+    
+    // 移动
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+    
+    if (ball.x <= ball.r || ball.x >= W - ball.r) ball.dx *= -1;
+    if (ball.y <= ball.r) ball.dy *= -1;
+    
+    // 球拍碰撞
+    if (ball.y + ball.r >= H - 20 && ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
+      ball.dy *= -1;
+      ball.y = H - 20 - ball.r;
+    }
+    
+    // 砖块碰撞
+    bricks.forEach(b => {
+      if (b.alive && ball.x > b.x && ball.x < b.x + b.w && ball.y > b.y && ball.y < b.y + b.h) {
+        b.alive = false;
+        ball.dy *= -1;
+        score += 10;
+        document.getElementById('brickScore').textContent = score;
+      }
+    });
+    
+    // 失败
+    if (ball.y > H) {
+      brickStarted = false;
+      ctx.fillStyle = '#f8c8dc';
+      ctx.font = '24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('游戏结束! 得分: ' + score, W/2, H/2);
+      document.onkeydown = null;
+      return;
+    }
+    
+    // 胜利
+    if (bricks.every(b => !b.alive)) {
+      brickStarted = false;
+      ctx.fillStyle = '#90ee90';
+      ctx.font = '24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('全清! 得分: ' + score, W/2, H/2);
+      document.onkeydown = null;
+      return;
+    }
+    
+    brickAnim = requestAnimationFrame(loop);
+  }
+  
+  if (brickAnim) cancelAnimationFrame(brickAnim);
+  brickStarted = false;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#b0b0d0';
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('点击开始，左右键移动球拍', W/2, H/2);
+}
+
+// ===== 记忆翻牌 =====
+let memoryInit = false;
+function initMemory() {
+  memoryInit = true;
+  const emojis = ['🌸','🌙','⭐','🎀','🐱','🎵','💎','🌈'];
+  let cards = [...emojis, ...emojis].sort(() => Math.random() - 0.5);
+  let board = document.getElementById('memoryBoard');
+  board.innerHTML = '';
+  let flipped = [], matched = 0, moves = 0;
+  
+  cards.forEach((emoji, i) => {
+    let card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.emoji = emoji;
+    card.dataset.index = i;
+    card.textContent = '?';
+    card.onclick = () => {
+      if (card.classList.contains('flipped') || card.classList.contains('matched') || flipped.length >= 2) return;
+      card.classList.add('flipped');
+      card.textContent = emoji;
+      flipped.push(card);
+      
+      if (flipped.length === 2) {
+        moves++;
+        document.getElementById('memoryMoves').textContent = moves;
+        if (flipped[0].dataset.emoji === flipped[1].dataset.emoji) {
+          flipped.forEach(c => c.classList.add('matched'));
+          matched++;
+          document.getElementById('memoryPairs').textContent = matched;
+          flipped = [];
+          if (matched === 8) setTimeout(() => alert('恭喜通关! 用了 ' + moves + ' 步'), 200);
+        } else {
+          setTimeout(() => {
+            flipped.forEach(c => { c.classList.remove('flipped'); c.textContent = '?'; });
+            flipped = [];
+          }, 800);
+        }
+      }
+    };
+    board.appendChild(card);
+  });
+  document.getElementById('memoryMoves').textContent = 0;
+  document.getElementById('memoryPairs').textContent = 0;
+}
+
+// ===== 反应测试 =====
+let reactionState = 'idle', reactionStart, reactionBest = Infinity;
+function reactionClick() {
+  const box = document.getElementById('reactionBox');
+  
+  if (reactionState === 'idle' || reactionState === 'result') {
+    reactionState = 'waiting';
+    box.className = 'reaction-box waiting';
+    box.textContent = '等绿色出现...';
+    setTimeout(() => {
+      if (reactionState === 'waiting') {
+        reactionState = 'ready';
+        box.className = 'reaction-box ready';
+        box.textContent = '点!';
+        reactionStart = Date.now();
+      }
+    }, 1000 + Math.random() * 3000);
+  } else if (reactionState === 'waiting') {
+    reactionState = 'idle';
+    box.className = 'reaction-box idle';
+    box.textContent = '太早了! 点击重试';
+  } else if (reactionState === 'ready') {
+    let time = Date.now() - reactionStart;
+    reactionState = 'result';
+    box.className = 'reaction-box result';
+    box.textContent = time + 'ms';
+    if (time < reactionBest) {
+      reactionBest = time;
+      document.getElementById('reactionBest').textContent = time + 'ms';
+    }
+  }
+}
+</script>
+</body>
+</html>
